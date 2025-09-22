@@ -1,7 +1,7 @@
 const API_BASE_URL = 'http://localhost:5000';
 
 export const api = {
-  
+
   login: async (email: string, password: string) => {
     const res = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
@@ -12,11 +12,22 @@ export const api = {
     return res.json();
   },
   logout: async () => {
-  const res = await fetch(`${API_BASE_URL}/auth/logout`, {
+    const res = await fetch(`${API_BASE_URL}/auth/logout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
     });
+    return res.json();
+  },
+  getCurrentUser: async () => {
+    const res = await fetch(`${API_BASE_URL}/user/me`, {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', 
+    });
+    if(!res.ok){
+      throw new Error('Failed to fetch the user data')
+    }
     return res.json();
   },
 
@@ -29,7 +40,7 @@ export const api = {
     return res.json();
   },
 
-  
+
   getAllDocuments: async () => {
     const res = await fetch(`${API_BASE_URL}/docs/all`, {
       method: 'GET',
@@ -67,7 +78,7 @@ export const api = {
     });
     return res.json();
   },
-  
+
   deleteDocument: async (id: string) => {
     const res = await fetch(`${API_BASE_URL}/docs/delete/${id}`, {
       method: 'DELETE',
@@ -76,8 +87,8 @@ export const api = {
     });
     return res.json();
   },
-  
-  
+
+
   getCollaborators: async (id: string) => {
     const res = await fetch(`${API_BASE_URL}/docs/${id}/collaborators`, {
       method: 'GET',
@@ -88,7 +99,7 @@ export const api = {
   },
 
   addCollaborator: async (id: string, collaboratorId: string) => {
-    const res = await fetch(`${API_BASE_URL}/docs/${id}/add-Collaborator`, {
+    const res = await fetch(`${API_BASE_URL}/docs/${id}/add-collaborator`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -107,7 +118,7 @@ export const api = {
     return res.json();
   },
 
-  
+
   getVersions: async (id: string) => {
     const res = await fetch(`${API_BASE_URL}/docs/${id}/versions`, {
       method: 'GET',
@@ -126,10 +137,18 @@ export const api = {
     return res.json();
   },
 
-  
+
   deleteVersion: async (docId: string, versionId: string) => {
     const res = await fetch(`${API_BASE_URL}/docs/${docId}/versions/${versionId}`, {
       method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    return res.json();
+  },
+  searchUsers: async (query: string) => {
+    const res = await fetch(`${API_BASE_URL}/user/search?query=${query}`, {
+      method: 'GET',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
     });

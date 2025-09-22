@@ -1,38 +1,68 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { User } from '../types'; // Import the User interface
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { User } from '../types';
+import { api } from '../lib/api';
 
-// Define the shape of our context's value
 interface AuthContextType {
   user: User | null;
   login: (userData: User) => void;
   logout: () => void;
+  isLoading: boolean;
 }
 
-// Create the context
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Create the provider component
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthChecked, setIsAuthChecked] = useState(false); 
+
+  useEffect(() => {
+    if (isAuthChecked) {
+      return;
+    }
+
+    const checkUserSession = async () => {
+      try {
+        const res = await api.getCurrentUser();
+        if (res && res.user && res.user.id) {
+          setUser(res.user);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Session check failed:', error);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
+        setIsAuthChecked(true);
+      }
+    };
+
+    checkUserSession();
+  }, [isAuthChecked]); 
 
   const login = (userData: User) => {
     setUser(userData);
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      await api.logout();
+    } catch (error) {
+      console.error('Logout failed', error);
+    }
     setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ user, login, logout, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-// Create the custom hook
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

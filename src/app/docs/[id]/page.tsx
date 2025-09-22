@@ -5,27 +5,30 @@ import { useRouter } from 'next/navigation';
 import { api } from '../../../lib/api';
 import { Document as DocumentType, User, Version } from '../../../types';
 import { useAuth } from '../../../context/AuthContext';
-import ConfirmationModal from '../../../components/common/ConfirmationModal'; // Import the new modal component
+import ConfirmationModal from '../../../components/common/ConfirmationModal';
 
 export default function DocumentPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+  const  id  = params.id;
   const [document, setDocument] = useState<DocumentType | null>(null);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
-  const [newCollaboratorId, setNewCollaboratorId] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<User[]>([]);
+  const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
   const [versions, setVersions] = useState<Version[]>([]);
   const [showVersions, setShowVersions] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [showDeleteModal, setShowDeleteModal] = useState(false); // State for the modal
-  const [versionToDeleteId, setVersionToDeleteId] = useState(''); // State to hold the version ID
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [versionToDeleteId, setVersionToDeleteId] = useState('');
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, isLoading: isAuthLoading } = useAuth();
+  const [isRestoring, setIsRestoring] = useState(false);
 
   const fetchDocument = async () => {
     try {
       const res = await api.getDocumentById(id);
-      if (res.document) { 
+      if (res.document) {
         setDocument(res.document);
         setTitle(res.document.title);
         setContent(res.document.content);
@@ -43,13 +46,19 @@ export default function DocumentPage({ params }: { params: { id: string } }) {
     }
   };
 
+ 
   useEffect(() => {
-    if (id) {
+    if (id && !isAuthLoading) {
       fetchDocument();
     }
-  }, [id, router]);
+  }, [id, isAuthLoading, router]);
 
   const handleUpdate = async () => {
+   
+    if (isRestoring) {
+      setIsRestoring(false);
+      return;
+    }
     if (!document) return;
 
     try {
@@ -64,16 +73,39 @@ export default function DocumentPage({ params }: { params: { id: string } }) {
       console.error(err);
     }
   };
-  
-  const handleAddCollaborator = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCollaboratorId) return;
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+
+    if (searchTimeout) {
+      clearTimeout(searchTimeout);
+    }
+
+    const newTimeout = setTimeout(async () => {
+      if (query.length > 2) {
+        const res = await api.searchUsers(query);
+        if (Array.isArray(res)) {
+          setSearchResults(res);
+        } else {
+          setSearchResults([]);
+        }
+      } else {
+        setSearchResults([]);
+      }
+    }, 500);
+    setSearchTimeout(newTimeout);
+  };
+
+  const handleAddCollaborator = async (collaboratorId: string) => {
+    if (!collaboratorId) return;
 
     try {
-      const res = await api.addCollaborator(id, newCollaboratorId);
-      if (res.Message === 'Collaboraor added sucessfully') {
-        setDocument(res.Docuent);
-        setNewCollaboratorId('');
+      const res = await api.addCollaborator(id, collaboratorId);
+      if (res.Message === 'Collaborator added successfully') {
+        setDocument(res.Document);
+        setSearchQuery('');
+        setSearchResults([]);
         alert('Collaborator added successfully!');
       } else {
         alert(res.Message);
@@ -82,7 +114,7 @@ export default function DocumentPage({ params }: { params: { id: string } }) {
       alert('Failed to add collaborator.');
     }
   };
-  
+
   const handleRemoveCollaborator = async (collaboratorId: string) => {
     try {
       const res = await api.removeCollaborator(id, collaboratorId);
@@ -120,6 +152,8 @@ export default function DocumentPage({ params }: { params: { id: string } }) {
 
   const handleRestoreVersion = async (versionId: string) => {
     try {
+     
+      setIsRestoring(true);
       const res = await api.restoreVersion(id, versionId);
       if (res.Message === 'Document restored to selected version') {
         setDocument(res.Document);
@@ -140,27 +174,27 @@ export default function DocumentPage({ params }: { params: { id: string } }) {
     setVersionToDeleteId(versionId);
     setShowDeleteModal(true);
   };
-  
+
   const confirmDelete = async () => {
-      try {
-          const res = await api.deleteVersion(id, versionToDeleteId);
-          if (res.Message === "Version deleted successfully") {
-              setVersions(versions.filter(v => v._id !== versionToDeleteId));
-              alert("Version deleted successfully!");
-          } else {
-              alert(res.Message);
-          }
-      } catch (err) {
-          alert("Failed to delete version.");
-          console.error(err);
-      } finally {
-          setShowDeleteModal(false);
-          setVersionToDeleteId('');
+    try {
+      const res = await api.deleteVersion(id, versionToDeleteId);
+      if (res.Message === "Version deleted successfully") {
+        setVersions(versions.filter(v => v._id !== versionToDeleteId));
+        alert("Version deleted successfully!");
+      } else {
+        alert(res.Message);
       }
+    } catch (err) {
+      alert("Failed to delete version.");
+      console.error(err);
+    } finally {
+      setShowDeleteModal(false);
+      setVersionToDeleteId('');
+    }
   };
 
-
-  if (loading) {
+  
+  if (loading || isAuthLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
         Loading document...
@@ -175,20 +209,20 @@ export default function DocumentPage({ params }: { params: { id: string } }) {
       </div>
     );
   }
-  
-  if (!document) {
-      return (
-          <div className="flex min-h-screen items-center justify-center text-red-500">
-              Document not found or you do not have permission.
-          </div>
-      );
-  }
 
-  const isOwner = user && document.owner.id === user.id;
+  if (!document) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-red-500">
+        Document not found or you do not have permission.
+      </div>
+    );
+  }
+  
+  const isOwner = user && document.owner && String(document.owner.id || (document.owner as any)._id) === String(user.id);
 
   return (
     <div className="min-h-screen p-8">
-        <div className="w-full max-w-2xl   mb-6">
+      <div className="w-full max-w-2xl  mb-6">
         <button
           onClick={() => router.back()}
           className="bg-gray-200 text-gray-800 px-4 py-2 flex justify-end rounded-md hover:bg-gray-500 transition-colors"
@@ -249,22 +283,28 @@ export default function DocumentPage({ params }: { params: { id: string } }) {
           )}
         </div>
         {isOwner && (
-          <form onSubmit={handleAddCollaborator} className="mt-4 flex gap-2">
+          <div className="relative mt-4">
             <input
               type="text"
-              placeholder="Enter Collaborator ID"
-              value={newCollaboratorId}
-              onChange={(e) => setNewCollaboratorId(e.target.value)}
-              className="flex-grow p-2 border rounded-md"
-              required
+              placeholder="Search and add a collaborator by email "
+              value={searchQuery}
+              onChange={handleSearchChange}
+              className="w-full p-2 border rounded-md"
             />
-            <button
-              type="submit"
-              className="bg-blue-500 text-white px-4 py-2 rounded-md"
-            >
-              Add Collaborator
-            </button>
-          </form>
+            {searchResults.length > 0 && (
+              <ul className="absolute z-10 w-full bg-black border  border-gray-300 rounded-md mt-1 shadow-lg max-h-40 overflow-y-auto">
+                {searchResults.map((result) => (
+                  <li
+                    key={result.id}
+                    onClick={() => handleAddCollaborator(result.id)}
+                    className="p-2 cursor-pointer hover:text-yellow-200"
+                  >
+                    ({result.email})
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
       </div>
 
@@ -281,7 +321,7 @@ export default function DocumentPage({ params }: { params: { id: string } }) {
       {showVersions && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center text-black">
           <div className="bg-white p-8 rounded-lg w-1/2 max-h-[80vh] overflow-y-auto">
-            <h3 className="text-xl  font-bold mb-4">Document Versions</h3>
+            <h3 className="text-xl  font-bold mb-4">Document Versions</h3>
             {versions.length === 0 ? (
               <p>No versions found.</p>
             ) : (
@@ -318,7 +358,7 @@ export default function DocumentPage({ params }: { params: { id: string } }) {
           </div>
         </div>
       )}
-      
+
       <ConfirmationModal
         isOpen={showDeleteModal}
         message="Are you sure you want to delete this version?"
