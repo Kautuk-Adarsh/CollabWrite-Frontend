@@ -2,7 +2,7 @@ import Link from 'next/link';
 
 export default function HomePage() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-24">
+    <main className="flex min-h-screen flex-col items-center justify-center p-24 bg-gradient-to-br from-black via-gray-700">
       <h1 className="text-4xl font-bold mb-8">Welcome to Collabwrite!</h1>
       <p className="text-lg text-center">
         Your real-time document collaboration platform.

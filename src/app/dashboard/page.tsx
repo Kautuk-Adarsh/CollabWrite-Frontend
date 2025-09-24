@@ -103,7 +103,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen p-8">
+    <main className="min-h-screen p-8 bg-gradient-to-br from-black via-gray-700">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">My Documents</h1>
         <div className="flex gap-4">
@@ -121,11 +121,11 @@ export default function DashboardPage() {
       {documents.length === 0 ? (
         <p>You don't have any documents yet. Click the button above to create one.</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1  md:grid-cols-2 lg:grid-cols-3 gap-6">
           {documents.map((doc) => (
             <div key={doc._id} className="p-4 border rounded-lg shadow-md">
               <h2 className="text-xl font-semibold mb-2">{doc.title}</h2>
-              <p className="text-gray-600 truncate">{doc.content}</p>
+              <p className="text-white truncate">{doc.content}</p>
               <div className="mt-4 flex justify-end gap-2">
                 <button
                   onClick={() => router.push(`/docs/${doc._id}`)}

@@ -35,7 +35,7 @@ export default function CreateDocumentPage() {
   };
 
   return (
-    <div className="min-h-screen p-8 flex flex-col items-center">
+    <div className="min-h-screen p-8 flex flex-col items-center bg-gradient-to-br from-black via-gray-700">
       <div className="w-full max-w-2xl   mb-6">
         <button
           onClick={() => router.back()}
@@ -65,7 +65,7 @@ export default function CreateDocumentPage() {
         />
         <button
           type="submit"
-          className="bg-blue-500 text-white px-6 py-3 rounded-md font-semibold mt-4 hover:bg-blue-600"
+          className="bg-blue-500 text-white px-6 py-3 rounded-md font-semibold mt-4 hover:bg-blue-400"
           disabled={loading}
         >
           {loading ? 'Creating...' : 'Create Document'}

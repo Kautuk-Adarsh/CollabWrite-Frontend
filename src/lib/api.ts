@@ -25,9 +25,7 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include', 
     });
-    if(!res.ok){
-      throw new Error('Failed to fetch the user data')
-    }
+    
     return res.json();
   },
 
